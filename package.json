@@ -1,6 +1,6 @@
 {
   "name": "@schorts/browser-cache",
-  "version": "1.0.0-beta.0",
+  "version": "1.0.0",
   "description": "A lightweight implementation of the Cache<T> interface from @schorts/shared-kernel using the Browser Cache API. This package provides persistent caching in the browser with support for TTL (time-to-live) expiration and tag-based deletion.",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
