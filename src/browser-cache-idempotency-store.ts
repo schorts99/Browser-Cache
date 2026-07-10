@@ -96,4 +96,12 @@ export class BrowserCacheIdempotencyStore implements IdempotencyStore {
       return false;
     }
   }
+
+  async clearStore(): Promise<void> {
+    try {
+      await caches.delete(this.cacheName);
+    } catch (error) {
+      console.warn('Idempotency cache clearStore error:', error);
+    }
+  }
 }
