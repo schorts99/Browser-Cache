@@ -18,7 +18,7 @@ export class BrowserCache<T = unknown> implements SharedCache<T> {
     try {
       const data = await response.json();
 
-      if (data.expiresAt && Date.now() > data.expiresAt) {
+      if (data.expiresAt && Date.now() >= data.expiresAt) {
         await cache.delete(key);
 
         return undefined;
@@ -31,10 +31,19 @@ export class BrowserCache<T = unknown> implements SharedCache<T> {
   }
 
   async set(key: string, value: T, ttl?: number, tags?: string[]): Promise<void> {
+    if (ttl !== undefined && (!Number.isFinite(ttl) || ttl < 0)) {
+      throw new RangeError("TTL must be a finite, non-negative number of milliseconds");
+    }
+
+    if (ttl === 0) {
+      await this.delete(key);
+      return;
+    }
+
     const cache = await this.getCache();
     const payload = {
       value,
-      expiresAt: ttl ? Date.now() + ttl : null,
+      expiresAt: ttl !== undefined ? Date.now() + ttl : null,
       tags: tags ?? [],
     };
     const response = new Response(JSON.stringify(payload));
@@ -57,10 +66,14 @@ export class BrowserCache<T = unknown> implements SharedCache<T> {
 
       if (!response) continue;
 
-      const data = await response.json();
+      try {
+        const data = await response.json();
 
-      if (data.tags?.includes(tag)) {
-        await cache.delete(request);
+        if (data.tags?.includes(tag)) {
+          await cache.delete(request);
+        }
+      } catch {
+        continue;
       }
     }
   }
@@ -81,31 +94,48 @@ export class BrowserCache<T = unknown> implements SharedCache<T> {
 
     if (!response) return false;
 
-    const data = await response.json();
+    try {
+      const data = await response.json();
 
-    if (data.expiresAt && Date.now() > data.expiresAt) {
-      await cache.delete(key);
+      if (data.expiresAt && Date.now() >= data.expiresAt) {
+        await cache.delete(key);
 
+        return false;
+      }
+
+      return true;
+    } catch {
       return false;
     }
-
-    return true;
   }
 
-  async purgeExpired(): Promise<void> {
+  async prune(): Promise<number> {
     const cache = await this.getCache();
     const requests = await cache.keys();
+    let removed = 0;
 
     for (const request of requests) {
       const response = await cache.match(request);
 
       if (!response) continue;
 
-      const data = await response.json();
+      try {
+        const data = await response.json();
 
-      if (data.expiresAt && Date.now() > data.expiresAt) {
-        await cache.delete(request);
+        if (data.expiresAt && Date.now() >= data.expiresAt) {
+          if (await cache.delete(request)) {
+            removed++;
+          }
+        }
+      } catch {
+        continue;
       }
     }
+
+    return removed;
+  }
+
+  async purgeExpired(): Promise<void> {
+    await this.prune();
   }
 }

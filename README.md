@@ -102,12 +102,30 @@ has(key: string): Promise<boolean>
 Check if a key exists and is not expired.
 
 ```
+prune(): Promise<number>
+```
+
+Proactively remove expired entries from the cache and return the count of removed items.
+
+```
 purgeExpired(): Promise<void>
 ```
 
-Proactively remove expired entries.
+Alias that invokes `prune()` for backwards compatibility.
 
 ### IdempotencyStore
+
+```
+execute<T>(key: string, operation: () => Promise<T>, ttl?: number): Promise<T>
+```
+
+Execute an operation idempotently, coalescing concurrent calls for the same key and caching successful results.
+
+```
+executeWithCompletion<T>(key: string, operation: () => Promise<IdempotencyExecution<T>>, ttl?: number, reconcile?: ...): Promise<T>
+```
+
+Execute with a post-commit `complete` phase and reconciliation support for `CommitOutcomeUnknownError`.
 
 ```
 isProcessed(key: string): Promise<boolean>
@@ -125,13 +143,31 @@ Retrieve the stored result for a key (if it exists and is not expired).
 markProcessed(key: string, result: unknown, ttl?: number): Promise<void>
 ```
 
-Mark a key as processed and store its result. Default TTL is 24 hours.
+Mark a key as processed and store its result.
+
+```
+resolveUnknownCommit(key: string, outcome: { status: "committed" | "not-committed", execution?: ... }): Promise<void>
+```
+
+Reconcile an unconfirmed commit outcome after a failure.
 
 ```
 clear(key: string): Promise<boolean>
 ```
 
 Remove a processed entry.
+
+```
+clearStore(): Promise<void>
+```
+
+Clear all entries from the idempotency store.
+
+```
+prune(): Promise<number>
+```
+
+Proactively remove expired entries from the store and return the count of removed items.
 
 ## Notes
 
